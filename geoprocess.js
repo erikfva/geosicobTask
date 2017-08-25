@@ -21,6 +21,8 @@ const config = {
   idleTimeoutMillis: 30000, // how long a client is allowed to remain idle before being closed 
 }
 
+//process.env.APPDATA = '' //Path donde se encuentra la careta postgresql que contiene el archivo pgpass.conf
+
 	const pool = new pg.Pool(config)
   pool.on('error', function (err, client) {
     // if an error is encountered by a client while it sits idle in the pool 
@@ -42,7 +44,7 @@ app.get('/do/:id', (req, res, next) => {
    
   // to run a query we can acquire a client from the pool, 
   // run a query on the client, and then return the client to the pool 
-  var idgeoproceso = parseInt(req.params.id);
+  var idgeoproceso = isNaN(parseInt(req.params.id))?-1:parseInt(req.params.id);
   
   pool.connect(function(err, client, done) {
     if(err) {
@@ -55,8 +57,13 @@ app.get('/do/:id', (req, res, next) => {
       done(err);
    
       if(err) {
-        return console.error('error running query', err);
+        console.error('error running query', err);
+        return res.status(500).json({success: 0, msg: 'Error: ' + err.message});
       }
+      if(!result.rows.length){
+      	return res.status(500).json({success: 0, msg: 'Error: No se ha encontrado el proceso ' + idgeoproceso});
+      }
+      
       console.log('Proceso: ' + result.rows[0].proceso);
       result.rows[0].entrada.idgeoproceso = idgeoproceso
       switch (result.rows[0].proceso) {
