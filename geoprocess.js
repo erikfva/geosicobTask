@@ -247,7 +247,7 @@ function sicob_build_shapefiles(data,cb){
 		let condition = Object.keys(_condition).length === 0 ? 'TRUE' : buildWHERE(_condition)
 		console.log(condition)
 
-		var cmd = config.PATH_OGR2OGR + ' -f "ESRI Shapefile" ' + config.PATH_SHP + timesid + '/' + (lyr.fname || lyr.lyr).toLowerCase() + '_geo_geosicob.shp PG:"host=' + config.postgres.host + ' user=' + config.postgres.user + ' dbname=' + config.postgres.database + '" -geomfield the_geom -where "' + condition + '" -overwrite --config PG_USE_COPY YES "' + lyr.lyr + '"'
+		var cmd = config.PATH_OGR2OGR + ' -f "ESRI Shapefile" ' + config.PATH_SHP + timesid + '/' + (lyr.fname || lyr.lyr).toLowerCase() + '_geo_geosicob.shp PG:"host=' + config.postgres.host + ' user=' + config.postgres.user + ' password=\'\'' + ' dbname=' + config.postgres.database + '" -geomfield the_geom -where "' + condition + '" -overwrite --config PG_USE_COPY YES "' + lyr.lyr + '"'
 		cmds.push(cmd)
 	})
 	var files_cnt = data.lyr_list.length
