@@ -194,7 +194,9 @@ function batch(cmds,cb,finish){
 }
 
 function sicob_rungeoprocess(idgeoproceso, cb ){
-	var sql = 'SELECT sicob_ejecutar_geoproceso(\'{""idgeoproceso"":""' + parseInt(idgeoproceso) + '""}\'::json) AS _out';
+	var strparam = '{\\"idgeoproceso\\":"' + parseInt(idgeoproceso) + '"}';
+	var sql = 'SELECT sicob_ejecutar_geoproceso(\'' + strparam +'\'::json) AS _out';
+	//var sql = 'SELECT sicob_ejecutar_geoproceso(\'{""idgeoproceso""":""' + parseInt(idgeoproceso) + '""}\'::json) AS _out';
 	var cmd = 'psql -d geodatabase -U admderechos -c "' + sql + '"';
 
 	//console.log(cmd);

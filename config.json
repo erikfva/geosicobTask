@@ -10,7 +10,7 @@
   	"max": 10,
   	"idleTimeoutMillis": 30000
   },
-	"PATH_OGR2OGR": "C:\\OSGeo4W64\\bin\\ogr2ogr.exe",
-	"PATH_SHP": "C:\\wamp64\\www\\abt\\shapefiles\\",
-	"URL_SHP": "http://localhost/abt/shapefiles/"
+	"PATH_OGR2OGR": "C:\\Program Files\\QGIS 3.2\\bin\\ogr2ogr.exe",
+	"PATH_SHP": "C:\\wamp\\www\\gsadmin\\shapefiles\\",
+	"URL_SHP": "http://localhost/gsadmin/shapefiles/"
 } 
