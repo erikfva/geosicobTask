@@ -8,11 +8,13 @@ const pg = require('pg')
 var fs = require('fs');
 var archiver = require('archiver');
 
+//process.env.APPDATA = '' //Path donde se encuentra la carpeta postgresql que contiene el archivo pgpass.conf
 
-//process.env.APPDATA = '' //Path donde se encuentra la careta postgresql que contiene el archivo pgpass.conf
-
-	const pool = new pg.Pool(config.postgres)
-  pool.on('error', function (err, client) {
+//*************************************/
+/* CONEXION TO POSTGRESQL DATABASE
+//*************************************/
+const pool = new pg.Pool(config.postgres)
+pool.on('error', function (err, client) {
     // if an error is encountered by a client while it sits idle in the pool
     // the pool itself will emit an error event with both the error and
     // the client which emitted the original error
@@ -20,13 +22,69 @@ var archiver = require('archiver');
     // between your application and the database, the database restarts, etc.
     // and so you might want to handle it and at least log it out
     console.error('idle client error', err.message, err.stack)
-  })
+})
+//-------------------------------------/
 
+//*************************************/
+/* START POINT
+//*************************************/
+app.listen(config.express.port, function () {
+	console.log('Servicios de geoprocesamiento disponibles en el puerto ' + config.express.port + '!');
+    pool.connect((err, client) => {
+		if(err) {
+		  console.log(err);
+		}
 
+		client.on('notification', function(msg) {
+			let payload = JSON.parse(msg.payload);
+			
+			let cmd = payload.cmd || '';
+			switch (cmd) {
+				case 'executeSQL':
+					console.log(payload);
+					executeSQL(payload.sql);
+					break;
+				default:
+			}
+
+		  //pusher.trigger('watch_realtime_table', 'new_record', JSON.parse(msg.payload));
+		});
+		const query = client.query('LISTEN gvcmd'); //Listen GeoVision command
+	});
+/*
+	pool.connect( function(err, client, done) {
+		if(err) {
+		  console.log(err);
+		}
+	  
+		// Listen for all pg_notify channel messages
+		client.on('notification', function(msg) {
+		  let payload = JSON.parse(msg.payload);
+		  console.log(payload);
+		})
+		
+		// Designate which channels we are listening on. Add additional channels with multiple lines.
+		client.query('LISTEN new_order',function(err) {
+			//call `done(err)` to release the client back to the pool (or destroy it if there is an error)
+			done(err);
+
+			if(err) {
+				console.error('error running query', err);
+			}
+		})
+
+	})	
+*/
+
+})
+//------------------------------------/
+
+//*************************************/
+/*	ROUTES
+//*************************************/
 app.get('/', function (req, res) {
   res.send('Bienvenido al servidor de geoprocesamiento!')
 })
-
 
 app.get('/do/:id', (req, res, next) => {
 
@@ -111,10 +169,7 @@ app.get('/do/:id', (req, res, next) => {
   });
 
 });
-
-app.listen(config.express.port, function () {
-  console.log('Servicios de geoprocesamiento disponibles en el puerto ' + config.express.port + '!')
-})
+//-------------------------------------/
 
 function executeScalar(sql, cb){
 	var sql = 'SELECT t.* FROM (' + sql + ') t';
@@ -197,7 +252,7 @@ function sicob_rungeoprocess(idgeoproceso, cb ){
 	var strparam = '{\\"idgeoproceso\\":"' + parseInt(idgeoproceso) + '"}';
 	var sql = 'SELECT sicob_ejecutar_geoproceso(\'' + strparam +'\'::json) AS _out';
 	//var sql = 'SELECT sicob_ejecutar_geoproceso(\'{""idgeoproceso""":""' + parseInt(idgeoproceso) + '""}\'::json) AS _out';
-	var cmd = 'psql -d geodatabase -U admderechos -c "' + sql + '"';
+	var cmd = 'psql -d geodatabase -U ' + config.postgres.user + ' -c "' + sql + '"';
 
 	//console.log(cmd);
 
@@ -249,7 +304,7 @@ function sicob_build_shapefiles(data,cb){
 		let condition = Object.keys(_condition).length === 0 ? 'TRUE' : buildWHERE(_condition)
 		console.log(condition)
 
-		var cmd = config.PATH_OGR2OGR + ' -f "ESRI Shapefile" ' + config.PATH_SHP + timesid + '/' + (lyr.fname || lyr.lyr).toLowerCase() + '_geo_geosicob.shp PG:"host=' + config.postgres.host + ' user=' + config.postgres.user + ' dbname=' + config.postgres.database + '" -geomfield the_geom -where "' + condition + '" -overwrite --config PG_USE_COPY YES "' + lyr.lyr + '"'
+		var cmd = config.PATH_OGR2OGR + ' -f "ESRI Shapefile" ' + config.PATH_SHP + timesid + '/' + (lyr.fname || lyr.lyr).toLowerCase() + '_geo_geosicob.shp PG:"host=' + config.postgres.host + ' user=' + config.postgres.user + ' dbname=' + config.postgres.database + (config.postgres.password?' password=' + config.postgres.password:'') + '" -geomfield the_geom -where "' + condition + '" -overwrite --config PG_USE_COPY YES "' + lyr.lyr + '"'
 		cmds.push(cmd)
 	})
 	var files_cnt = data.lyr_list.length
