@@ -218,17 +218,20 @@ function batchSQL(sqlList,cb,finish){
 }
 
 function execute(cmd,cb, envvar ){
-	var child = shell.exec(
-		cmd,
-		{async:true, silent:true, detached: true, env: envvar||{}, stdio: 'ignore'/*, encoding : 'latin1'*/},
-		function(code, stdout, stderr) {
-			if(code){
-				console.log(stderr)
-			}
-        if (cb) cb(code, stdout, stderr)
-		}
-	);
-	child.unref()
+	'use strict';
+	var splitcmd = cmd.split(" ")
+	var action = cmd[0]
+	splitcmd.shift()
+	const
+			{ spawn } = require( 'child_process' ),
+			dir = spawn( action, splitcmd );
+	var stdout = null, stderr = null, code = null
+	dir.stdout.on( 'data', data => { console.log( `stdout: ${data}`); stdout = data });
+	dir.stderr.on( 'data', data => { console.log( `stderr: ${data}`); stderr = dsts });
+	dir.on( 'close', code => {
+		console.log( `child process exited with code ${code}` );
+		if (cb) cb(code, stdout, stderr)
+	})
 }
 
 function batch(cmds,cb,finish){
@@ -297,16 +300,87 @@ function sicob_build_shapefiles(data,cb){
 	var fzipname = 'sicob_shp' + timesid
 	var cmds = []
 	shell.mkdir('-p', config.PATH_SHP + timesid)
+	files_cnt = 0 //Cantidad de shapefiles empaquetados.
+	var error = new Error('')
+	const compressSHP =	function(){
+		zip({
+			globpatt : '{*.shp,*.dbf,*.shx,*.prj}', //Patron usado por node-glob para generalizar nombres de archivos.
+			ftarget : config.PATH_SHP + fzipname + '.zip', //Nombre del archivo .zip generado, incluyendo la direcci�n de carpeta.
+			workdir : config.PATH_SHP + timesid + '/', //(opcional) Directorio donde se encuentran los archivos a comprimir.
+			cb : function(err){ //(opcional) Funci�n de callback que se ejecuta al finalizar el trabajo.
+				var result = {link : config.URL_SHP + fzipname + '.zip', shp_cnt : files_cnt, success : 1}
+				//execute('rmdir /S /Q "' + config.PATH_SHP + timesid + '"');
+				if(err){
+					error.message = error.message==''? 'Error (sicob_build_shapefiles/zip):' + err : error.message + ', ' + err
+					console.log('Error (sicob_build_shapefiles/zip): ' + err)
+				}
 
-	data.lyr_list.forEach(function (lyr) {
-		console.log(lyr)
-		let _condition = lyr.condition || {}
-		let condition = Object.keys(_condition).length === 0 ? 'TRUE' : buildWHERE(_condition)
-		console.log(condition)
+				if(error.message){
+					result.success = 0
+					result.error = error.message.replace(/\r|\n/g,"")
+				}
 
-		var cmd = config.PATH_OGR2OGR + ' -f "ESRI Shapefile" ' + config.PATH_SHP + timesid + '/' + (lyr.fname || lyr.lyr).toLowerCase() + '_geo_geosicob.shp PG:"host=' + config.postgres.host + ' user=' + config.postgres.user + ' dbname=' + config.postgres.database + (config.postgres.password?' password=' + config.postgres.password:'') + '" -geomfield the_geom -where "' + condition + '" -overwrite --config PG_USE_COPY YES "' + lyr.lyr + '"'
-		cmds.push(cmd)
-	})
+				if (cb)	cb(error.message?error.message:null, result)
+			}
+		})
+	}
+
+	//https://stackoverflow.com/questions/32358845/how-do-i-listen-and-spawn-multiple-child-process-in-nodejs
+	const
+		{ spawn } = require( 'child_process' )	
+	for (var i = 0; i < data.lyr_list.length; i++) {
+		(function(i){
+			let lyr = data.lyr_list[i]
+			console.log(lyr)
+			let _condition = lyr.condition || {}
+			let condition = Object.keys(_condition).length === 0 ? 'TRUE' : buildWHERE(_condition)
+			console.log(condition)
+			var child = spawn( 
+				config.PATH_OGR2OGR, 
+				[ '-f', 'ESRI Shapefile', 
+					config.PATH_SHP + timesid + '/' + (lyr.fname || lyr.lyr).toLowerCase() + '_geo_geosicob.shp',
+					'PG:host=' + config.postgres.host + ' user=' + config.postgres.user + ' dbname=geodatabase' + (config.postgres.password?' password=' + config.postgres.password:''), 
+					'-geomfield', 'the_geom', 
+					'-where', 'TRUE', 
+					'-overwrite', '--config',
+					'PG_USE_COPY', 'YES', 
+					lyr.lyr 
+				])
+			// Add the child process to the list for tracking
+			cmds.push({process:child, content:"", exit_code: null })
+			// Listen for any response:
+			child.stdout.on('data', function (data) {
+					console.log(child.pid, data);
+					cmds[i].content += data;
+			})
+			// Listen for any errors:
+			child.stderr.on('data', function (data) {
+					console.log(child.pid, data);
+					cmds[i].content += data;
+			}); 
+			// Listen if the process closed
+			child.on('close', function(exit_code) {
+					console.log('Closed before stop: Closing code: ', exit_code);
+					cmds[i].exit_code = exit_code
+					if(exit_code == 0) files_cnt++
+					if(i == (data.lyr_list.length - 1)){
+						console.log('(sicob_build_shapefiles)...termino los shp.')
+						compressSHP()
+					}
+			})
+		})(i)
+	}
+	/*
+	const
+		dir = spawn( 'ogr2ogr', [ '-f', 'ESRI Shapefile', 'C:\\wamp\\www\\gsadmin\\shapefiles\\20190425012916345/capa_predios_geo_geosicob.shp',
+		'PG:host=localhost user=admderechos dbname=geodatabase', '-geomfield', 'the_geom', '-where', 'TRUE', '-overwrite', '--config',
+		'PG_USE_COPY', 'YES', 'temp.f20190424ebafdgc30cbad61_fixt_pred' ] )
+
+dir.stdout.on( 'data', data => console.log( `stdout: ${data}` ) );
+dir.stderr.on( 'data', data => console.log( `stderr: ${data}` ) );
+dir.on( 'close', code => console.log( `child process exited with code ${code}` ) )
+	return
+
 	var files_cnt = data.lyr_list.length
 	var error = new Error('')
 
@@ -344,6 +418,7 @@ function sicob_build_shapefiles(data,cb){
 			})
 		}
 	)
+	*/
 }
 
 function sicob_analisis_sobreposicion(op,cb){
