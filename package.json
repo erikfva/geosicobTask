@@ -22,6 +22,6 @@
     "express": "^4.15.4",
     "pg": "^7.2.0",
     "shelljs": "^0.8.1",
-    "sql-condition-builder": "^0.1.9"
+    "sql-condition-builder": "^0.1.10"
   }
 }

@@ -8,6 +8,13 @@ const pg = require('pg')
 var fs = require('fs');
 var archiver = require('archiver');
 
+/*
+const bodyParser = require('body-parser');
+app.use(bodyParser.urlencoded({ extended: false }));
+app.use(bodyParser.json());
+*/
+app.use(express.json());
+
 //process.env.APPDATA = '' //Path donde se encuentra la carpeta postgresql que contiene el archivo pgpass.conf
 
 //*************************************/
@@ -170,6 +177,90 @@ app.get('/do/:id', (req, res, next) => {
 
 });
 //-------------------------------------/
+
+app.post('/analisis', (req, res) => {
+	var sql = 'SELECT sicob_analisis_sobreposicion(\'' + JSON.stringify(req.body) + '\')'
+
+	executeScalar(sql,function(err, result){
+		if(err){
+			console.error(err, sql)
+			//throw err
+			err.success = 0
+			return res.json(err)
+		}
+		result.success = 1
+		return res.json(result) // resolve(result)
+	})
+	
+	//res.json(req.body);
+	//res.json({sql: sql})
+});
+//-------------------------------------/
+
+app.post('/sobreposicion', (req, res) => {
+	var sql = 'SELECT sicob_overlap(\'' + JSON.stringify(req.body) + '\')'
+
+	executeScalar(sql,function(err, result){
+		if(err){
+			console.error(err, sql)
+			//throw err
+			err.success = 0
+			return res.json(err)
+		}
+		result.success = 1
+		return res.json(result) // resolve(result)
+	})
+	
+	//res.json(req.body);
+	//res.json({sql: sql})
+});
+//-------------------------------------/
+
+app.post('/ubicacion', (req, res) => {
+	var sql = `
+	with
+	position AS (
+		select 
+		st_centroid( st_collect(the_geom) ) as the_geom
+		from
+		${req.body.lyr}
+	)
+	SELECT
+	row_to_json(r) as res
+	FROM (
+	SELECT
+		lm.sicob_id, lm.nom_dep, lm.nom_prov, lm.nom_mun
+	FROM 
+	position a
+	LEFT JOIN coberturas.lm lm
+				ON (
+					st_intersects(
+						a.the_geom,
+						lm.the_geom
+					)
+				)
+	) r		
+	`;
+	//console.log(sql)
+	
+	executeScalar(sql,function(err, result){
+		if(err){
+			console.error(err, sql)
+			//throw err
+			err.success = 0
+			return res.json(err)
+		}
+		result.success = 1
+		return res.json(result) // resolve(result)
+	})
+	
+	//res.json(req.body);
+	//res.json({sql: sql})
+});
+//-------------------------------------/
+
+
+
 
 function executeScalar(sql, cb){
 	var sql = 'SELECT t.* FROM (' + sql + ') t';
