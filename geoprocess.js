@@ -7,6 +7,8 @@ const pg = require('pg')
 //Para compresion zip:
 var fs = require('fs');
 var archiver = require('archiver');
+var cors = require('cors');
+app.use(cors());
 
 /*
 const bodyParser = require('body-parser');

@@ -19,6 +19,7 @@
   "homepage": "https://github.com/erikfva/geosicobTask#readme",
   "dependencies": {
     "archiver": "^2.0.0",
+    "cors": "^2.8.5",
     "express": "^4.15.4",
     "pg": "^7.2.0",
     "shelljs": "^0.8.1",
