@@ -18,11 +18,11 @@
   },
   "homepage": "https://github.com/erikfva/geosicobTask#readme",
   "dependencies": {
-    "archiver": "^2.0.0",
+    "archiver": "^5.0.2",
     "cors": "^2.8.5",
     "express": "^4.15.4",
-    "pg": "^7.2.0",
-    "shelljs": "^0.8.1",
+    "pg": "^8.5.0",
+    "shelljs": "^0.8.4",
     "sql-condition-builder": "^0.1.10"
   }
 }
