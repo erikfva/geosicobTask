@@ -11,7 +11,7 @@
   	"max": 10,
   	"idleTimeoutMillis": 30000
   },
-	"PATH_OGR2OGR": "ogr2ogr.exe",
+	"PATH_OGR2OGR": "C:\\Program\" Files\"\\\"QGIS 3.11\"\\bin\\",
 	"PATH_SHP": "C:\\wamp\\www\\gsadmin\\shapefiles\\",
 	"URL_SHP": "http://localhost/gsadmin/shapefiles/"
 } 
